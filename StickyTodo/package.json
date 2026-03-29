@@ -1,0 +1,75 @@
+{
+  "name": "stickytodo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --build && vite build",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build",
+    "electron:build": "npm run build && electron-builder",
+    "lint": "run-s lint:*",
+    "lint:oxlint": "oxlint . --fix",
+    "lint:eslint": "eslint . --fix --cache",
+    "format": "prettier --write --experimental-cli src/"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.30"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
+    "@tsconfig/node24": "^24.0.4",
+    "@types/node": "^24.12.0",
+    "@vitejs/plugin-vue": "^6.0.4",
+    "@vue/eslint-config-typescript": "^14.7.0",
+    "@vue/tsconfig": "^0.9.0",
+    "electron": "^41.1.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-oxlint": "~1.51.0",
+    "eslint-plugin-vue": "~10.8.0",
+    "jiti": "^2.6.1",
+    "npm-run-all2": "^8.0.4",
+    "oxlint": "~1.51.0",
+    "prettier": "3.8.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1",
+    "vite-plugin-electron": "^0.29.1",
+    "vite-plugin-vue-devtools": "^8.0.7",
+    "vue-tsc": "^3.2.5"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "build": {
+    "appId": "com.stickytodo.app",
+    "productName": "StickyTodo",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
