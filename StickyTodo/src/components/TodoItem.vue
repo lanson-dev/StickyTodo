@@ -272,8 +272,9 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums; user-select: none;
 }
 .text {
-  flex: 1; min-width: 0; font-size: 14px; color: var(--text);
-  line-height: 1.4; word-break: break-word; user-select: none;
+  flex: 1; min-width: 0; font-size: 15px; color: var(--text);
+  line-height: 1.45; word-break: break-word; user-select: none;
+  text-shadow: var(--text-shadow);
 }
 .text.bold { font-weight: 700; }
 .item.done .text { text-decoration: line-through; color: var(--text-2); }

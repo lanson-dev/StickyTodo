@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "StickyTodo",
-  "version": "0.1.0",
+  "version": "1.3.0",
   "identifier": "com.stickytodo.app",
   "build": {
     "frontendDist": "../dist",
@@ -23,7 +23,8 @@
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": false,
-        "shadow": false
+        "shadow": false,
+        "visible": false
       }
     ],
     "security": {

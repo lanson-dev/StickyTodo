@@ -2,6 +2,7 @@
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { useTodoStore } from '@/stores/todo'
 import TodoItem from '@/components/TodoItem.vue'
 
@@ -96,6 +97,12 @@ onMounted(async () => {
   unlistenStick = await listen('toggle-stick', () => {
     store.setAlwaysOnTop(!store.config.alwaysOnTop)
   })
+  // Show window after everything is loaded (it starts hidden to avoid flash / webview errors on boot)
+  try {
+    const win = getCurrentWebviewWindow()
+    await win.show()
+    await win.setFocus()
+  } catch {}
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
@@ -365,10 +372,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue'
 /* App uses --dyn-bg (set via inline style) for unified background */
 .app{display:flex;flex-direction:column;height:100vh;background:var(--dyn-bg, rgba(30,30,32,0.58));backdrop-filter:blur(32px) saturate(180%);-webkit-backdrop-filter:blur(32px) saturate(180%);overflow:hidden;transition:background .25s;border-radius:14px;
   --surface:rgba(50,50,54,0.40);--text:var(--dyn-text,#f0f0f0);--text-2:var(--dyn-text-2,rgba(255,255,255,0.40));--text-3:var(--dyn-text-3,rgba(255,255,255,0.20));
-  --fg:#f0f0f0;--sep:rgba(255,255,255,0.08);--hover:rgba(255,255,255,0.05);--input-bg:rgba(255,255,255,0.08);--accent:#0a84ff}
+  --fg:#f0f0f0;--sep:rgba(255,255,255,0.08);--hover:rgba(255,255,255,0.05);--input-bg:rgba(255,255,255,0.08);--accent:#0a84ff;
+  --text-shadow:0 1px 3px rgba(0,0,0,0.35)}
 .app.theme-light{background:var(--dyn-bg, rgba(255,255,255,0.55));
   --surface:rgba(255,255,255,0.40);--text:var(--dyn-text,#1a1a1a);--text-2:var(--dyn-text-2,rgba(0,0,0,0.35));--text-3:var(--dyn-text-3,rgba(0,0,0,0.18));
-  --fg:#1a1a1a;--sep:rgba(0,0,0,0.06);--hover:rgba(0,0,0,0.04);--input-bg:rgba(0,0,0,0.05);--accent:#007aff}
+  --fg:#1a1a1a;--sep:rgba(0,0,0,0.06);--hover:rgba(0,0,0,0.04);--input-bg:rgba(0,0,0,0.05);--accent:#007aff;
+  --text-shadow:0 1px 3px rgba(255,255,255,0.4)}
 .app.locked .tabs{pointer-events:none;opacity:.5}
 .app.locked .content{pointer-events:none}
 .app.locked .ctrl-btn{pointer-events:none;opacity:.4}
@@ -378,7 +387,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue'
 /* Header: transparent bg so it shares the .app background */
 .header{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 6px 0 14px;background:transparent;flex-shrink:0;gap:8px;border-radius:14px 14px 0 0}
 .tabs{display:flex;align-items:center;gap:2px}
-.tab{display:flex;align-items:center;gap:5px;padding:4px 8px;border:none;background:transparent;font-size:14px;font-weight:500;color:var(--text-2);cursor:pointer;border-radius:6px;transition:color .15s,background .15s;white-space:nowrap}
+.tab{display:flex;align-items:center;gap:5px;padding:4px 8px;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text-2);cursor:pointer;border-radius:6px;transition:color .15s,background .15s;white-space:nowrap;text-shadow:var(--text-shadow)}
 .tab:hover{color:var(--text)}
 .tab.active{color:var(--text);font-weight:600}
 .tab-divider{width:1px;height:12px;background:var(--sep);margin:0 2px}
