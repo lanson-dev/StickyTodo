@@ -4,6 +4,10 @@ A lightweight, always-on-top desktop sticky note for your TODOs.
 
 轻量级桌面置顶便签 TODO 应用。
 
+## Download / 下载
+
+- [📦 StickyTodo_V1.0_x64-setup.exe](https://github.com/lanson-dev/StickyTodo/releases/latest/download/StickyTodo_0.1.0_x64-setup.exe)
+
 ## How to Use / 使用说明
 
 ![StickyTodo](./photos/introduction.png)
@@ -58,6 +62,7 @@ Output / 产物位于 `src-tauri/target/release/`
 ## Links / 链接
 
 - GitHub: [https://github.com/lanson-dev/StickyTodo](https://github.com/lanson-dev/StickyTodo)
+- Releases: [https://github.com/lanson-dev/StickyTodo/releases](https://github.com/lanson-dev/StickyTodo/releases)
 
 ## License
 
