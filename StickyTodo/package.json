@@ -13,6 +13,7 @@
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
+    "tauri": "tauri",
     "format": "prettier --write --experimental-cli src/",
     "version:sync": "node scripts/sync-version.mjs"
   },

@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -35,6 +38,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: StickyTodo/src-tauri -> target
+
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -43,7 +51,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: StickyTodo
-        run: npm install
+        run: npm ci
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
@@ -53,7 +61,17 @@ jobs:
           projectPath: StickyTodo
           tagName: ${{ github.ref_name }}
           releaseName: 'StickyTodo ${{ github.ref_name }}'
-          releaseBody: 'Download the installer for your platform below.'
+          releaseBody: |
+            ## Download
+
+            | Platform | File |
+            |----------|------|
+            | Windows x64 | `.exe` (NSIS installer) |
+            | macOS Apple Silicon | `.dmg` |
+            | macOS Intel | `.dmg` |
+            | Linux x64 | `.deb` / `.AppImage` |
+
+            > First release from GitHub Actions 🚀
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}

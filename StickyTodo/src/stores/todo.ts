@@ -22,6 +22,7 @@ export interface AppConfig {
   bgOpacity: number       // 0–100, unlocked background opacity
   lockedBgOpacity: number // 0–100, locked background opacity
   textOpacity: number     // 0–100, text opacity
+  shadowOpacity: number   // 0–100, text shadow opacity
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -33,6 +34,7 @@ const DEFAULT_CONFIG: AppConfig = {
   bgOpacity: 58,
   lockedBgOpacity: 32,
   textOpacity: 85,
+  shadowOpacity: 35,
 }
 
 function genId(): string {
@@ -88,6 +90,7 @@ export const useTodoStore = defineStore('todo', () => {
         bgOpacity: parsed.bgOpacity ?? DEFAULT_CONFIG.bgOpacity,
         lockedBgOpacity: parsed.lockedBgOpacity ?? DEFAULT_CONFIG.lockedBgOpacity,
         textOpacity: parsed.textOpacity ?? DEFAULT_CONFIG.textOpacity,
+        shadowOpacity: parsed.shadowOpacity ?? DEFAULT_CONFIG.shadowOpacity,
         x: parsed.x,
         y: parsed.y,
       }

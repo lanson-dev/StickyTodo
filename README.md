@@ -10,10 +10,10 @@ Go to [Releases](https://github.com/lanson-dev/StickyTodo/releases) to download 
 
 | Platform | File |
 |---|---|
-| Windows x64 | `StickyTodo_0.1.0_x64-setup.exe` |
-| macOS Apple Silicon | `StickyTodo_0.1.0_aarch64.dmg` |
-| macOS Intel | `StickyTodo_0.1.0_x64.dmg` |
-| Linux x64 | `StickyTodo_0.1.0_amd64.deb` / `.AppImage` |
+| Windows x64 | `StickyTodo_1.3.0_x64-setup.exe` |
+| macOS Apple Silicon | `StickyTodo_1.3.0_aarch64.dmg` |
+| macOS Intel | `StickyTodo_1.3.0_x64.dmg` |
+| Linux x64 | `StickyTodo_1.3.0_amd64.deb` / `.AppImage` |
 
 ## How to Use / 使用说明
 
