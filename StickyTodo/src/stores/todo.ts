@@ -19,6 +19,9 @@ export interface AppConfig {
   alwaysOnTop: boolean
   locked: boolean
   theme: 'dark' | 'light'
+  bgOpacity: number       // 0–100, unlocked background opacity
+  lockedBgOpacity: number // 0–100, locked background opacity
+  textOpacity: number     // 0–100, text opacity
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -27,6 +30,9 @@ const DEFAULT_CONFIG: AppConfig = {
   alwaysOnTop: false,
   locked: false,
   theme: 'dark',
+  bgOpacity: 58,
+  lockedBgOpacity: 32,
+  textOpacity: 85,
 }
 
 function genId(): string {
@@ -41,7 +47,18 @@ export const useTodoStore = defineStore('todo', () => {
   const dragSourceId = ref<string | null>(null)
 
   const todoItems = computed(() => items.value.filter((i) => !i.done))
-  const doneItems = computed(() => items.value.filter((i) => i.done))
+  const doneItems = computed(() =>
+    items.value
+      .filter((i) => i.done)
+      .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0)),
+  )
+
+  // Count of items completed today only (for badge)
+  const todayDoneCount = computed(() => {
+    const now = new Date()
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    return items.value.filter((i) => i.done && (i.completedAt ?? 0) >= startOfDay).length
+  })
 
   async function init() {
     if (initialized.value) return
@@ -66,13 +83,20 @@ export const useTodoStore = defineStore('todo', () => {
         width: parsed.width ?? DEFAULT_CONFIG.width,
         height: parsed.height ?? DEFAULT_CONFIG.height,
         alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_CONFIG.alwaysOnTop,
-        locked: parsed.locked ?? DEFAULT_CONFIG.locked,
+        locked: false,  // Always start unlocked
         theme: parsed.theme === 'light' ? 'light' : 'dark',
+        bgOpacity: parsed.bgOpacity ?? DEFAULT_CONFIG.bgOpacity,
+        lockedBgOpacity: parsed.lockedBgOpacity ?? DEFAULT_CONFIG.lockedBgOpacity,
+        textOpacity: parsed.textOpacity ?? DEFAULT_CONFIG.textOpacity,
         x: parsed.x,
         y: parsed.y,
       }
     } catch {
       config.value = { ...DEFAULT_CONFIG }
+    }
+    // Apply alwaysOnTop to the window if saved config has it enabled
+    if (config.value.alwaysOnTop) {
+      invoke('set_always_on_top', { flag: true }).catch(() => {})
     }
     initialized.value = true
   }
@@ -96,14 +120,25 @@ export const useTodoStore = defineStore('todo', () => {
   function addTodo(text: string) {
     const trimmed = text.trim()
     if (!trimmed) return
-    items.value.unshift({
+    // Find the last todo item's position, insert after it (before any done items)
+    const lastTodoIdx = findLastTodoIndex()
+    const newItem: TodoItem = {
       id: genId(),
       text: trimmed,
       done: false,
       bold: false,
       createdAt: Date.now(),
-    })
+    }
+    items.value.splice(lastTodoIdx + 1, 0, newItem)
     persistTodos()
+  }
+
+  /** Returns the index of the last non-done item, or -1 if none */
+  function findLastTodoIndex(): number {
+    for (let i = items.value.length - 1; i >= 0; i--) {
+      if (!items.value[i]!.done) return i
+    }
+    return -1
   }
 
   function toggleItem(id: string) {
@@ -114,6 +149,31 @@ export const useTodoStore = defineStore('todo', () => {
       if (selectedId.value === id) selectedId.value = null
       persistTodos()
     }
+  }
+
+  function unDoneItem(id: string) {
+    const item = items.value.find((i) => i.id === id)
+    if (item && item.done) {
+      item.done = false
+      item.completedAt = undefined
+      persistTodos()
+    }
+  }
+
+  function insertAfter(afterId: string, text: string) {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    const idx = items.value.findIndex((i) => i.id === afterId)
+    if (idx === -1) return
+    const newItem: TodoItem = {
+      id: genId(),
+      text: trimmed,
+      done: false,
+      bold: false,
+      createdAt: Date.now(),
+    }
+    items.value.splice(idx + 1, 0, newItem)
+    persistTodos()
   }
 
   function deleteItem(id: string) {
@@ -142,15 +202,22 @@ export const useTodoStore = defineStore('todo', () => {
   }
 
   function reorderItem(fromId: string, toId: string, position: 'before' | 'after') {
-    const from = items.value.find((i) => i.id === fromId)
-    const to = items.value.find((i) => i.id === toId)
-    if (!from || !to || from.done !== to.done || fromId === toId) return
+    if (fromId === toId) return
+    const arr = [...items.value]
+    const fromIndex = arr.findIndex((i) => i.id === fromId)
+    const toIndex = arr.findIndex((i) => i.id === toId)
+    if (fromIndex === -1 || toIndex === -1) return
+    if (arr[fromIndex]!.done !== arr[toIndex]!.done) return
 
-    const fromIndex = items.value.findIndex((i) => i.id === fromId)
-    items.value.splice(fromIndex, 1)
-    const toIndex = items.value.findIndex((i) => i.id === toId)
-    const insertAt = position === 'before' ? toIndex : toIndex + 1
-    items.value.splice(insertAt, 0, from)
+    // Remove dragged item
+    const [moved] = arr.splice(fromIndex, 1)!
+    if (!moved) return
+    // Find target again after removal
+    const newToIndex = arr.findIndex((i) => i.id === toId)
+    const insertAt = position === 'before' ? newToIndex : newToIndex + 1
+    arr.splice(insertAt, 0, moved)
+    // Replace the entire array to guarantee reactivity
+    items.value = arr
     persistTodos()
   }
 
@@ -170,8 +237,10 @@ export const useTodoStore = defineStore('todo', () => {
     persistConfig()
   }
 
-  function setLocked(flag: boolean) {
+  async function setLocked(flag: boolean) {
     config.value.locked = flag
+    try { await invoke('set_ignore_cursor_events', { ignore: flag }) } catch {}
+    try { await invoke('set_resizable', { resizable: !flag }) } catch {}
     persistConfig()
   }
 
@@ -188,9 +257,12 @@ export const useTodoStore = defineStore('todo', () => {
     dragSourceId,
     todoItems,
     doneItems,
+    todayDoneCount,
     init,
     addTodo,
     toggleItem,
+    unDoneItem,
+    insertAfter,
     deleteItem,
     clearDone,
     selectItem,

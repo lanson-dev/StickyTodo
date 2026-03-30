@@ -5,7 +5,11 @@ use std::sync::{
     Arc,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::Manager;
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::TrayIconBuilder;
+use tauri::{Emitter, Manager};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -63,15 +67,118 @@ fn close_window(window: tauri::WebviewWindow) {
     let _ = window.close();
 }
 
+#[tauri::command]
+fn set_ignore_cursor_events(window: tauri::WebviewWindow, ignore: bool) {
+    let _ = window.set_ignore_cursor_events(ignore);
+}
+
+#[tauri::command]
+fn set_resizable(window: tauri::WebviewWindow, resizable: bool) {
+    let _ = window.set_resizable(resizable);
+}
+
+#[tauri::command]
+fn open_url(url: String) {
+    #[cfg(target_os = "windows")]
+    let _ = std::process::Command::new("cmd").args(["/C", "start", "", &url]).spawn();
+    #[cfg(target_os = "macos")]
+    let _ = std::process::Command::new("open").arg(&url).spawn();
+    #[cfg(target_os = "linux")]
+    let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
+}
+
+#[tauri::command]
+fn get_autostart(app: tauri::AppHandle) -> bool {
+    app.autolaunch().is_enabled().unwrap_or(false)
+}
+
+#[tauri::command]
+fn set_autostart(app: tauri::AppHandle, enabled: bool) {
+    if enabled {
+        let _ = app.autolaunch().enable();
+    } else {
+        let _ = app.autolaunch().disable();
+    }
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--minimized"]),
+        ))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
+                        if let Some(win) = app.get_webview_window("main") {
+                            let _ = win.emit("toggle-lock", ());
+                        }
+                    }
+                })
+                .build(),
+        )
         .setup(|app| {
             let win = app.get_webview_window("main").unwrap();
 
-            // Restore saved window state (size / position / alwaysOnTop)
+            // Hide from taskbar
+            let _ = win.set_skip_taskbar(true);
+
+            // ── System tray ────────────────────────────────────────────
+            let lock_item = MenuItem::with_id(app, "lock", "Lock", true, None::<&str>)?;
+            let stick_item = MenuItem::with_id(app, "stick", "Stick", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+
+            let menu = Menu::with_items(app, &[&lock_item, &stick_item, &quit_item])?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("StickyTodo")
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(move |app: &tauri::AppHandle, event| {
+                    match event.id.as_ref() {
+                        "lock" => {
+                            if let Some(win) = app.get_webview_window("main") {
+                                let _ = win.emit("toggle-lock", ());
+                            }
+                        }
+                        "stick" => {
+                            if let Some(win) = app.get_webview_window("main") {
+                                let _ = win.emit("toggle-stick", ());
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|tray: &tauri::tray::TrayIcon, event| {
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(win) = app.get_webview_window("main") {
+                            let _ = win.show();
+                            let _ = win.unminimize();
+                            let _ = win.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
+            // Register global shortcut: Ctrl+Shift+Alt+L to toggle lock
+            let shortcut =
+                Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT | Modifiers::ALT), Code::KeyL);
+            let _ = app.global_shortcut().register(shortcut);
+
+            // Restore saved window state (size / position / alwaysOnTop / locked)
             let dir = app.path().app_data_dir().unwrap_or_default();
             if let Ok(s) = fs::read_to_string(dir.join("config.json")) {
                 if let Ok(v) = serde_json::from_str::<serde_json::Value>(&s) {
@@ -79,12 +186,14 @@ pub fn run() {
                         let _ = win.set_size(tauri::PhysicalSize::new(w as u32, h as u32));
                     }
                     if let (Some(x), Some(y)) = (v["x"].as_i64(), v["y"].as_i64()) {
-                        let _ = win
-                            .set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                        let _ =
+                            win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
                     }
                     if v["alwaysOnTop"].as_bool().unwrap_or(false) {
                         let _ = win.set_always_on_top(true);
                     }
+                    // NOTE: Never restore locked state on startup.
+                    // Always start unlocked so the user can see and interact with the window.
                 }
             }
 
@@ -140,6 +249,11 @@ pub fn run() {
             set_always_on_top,
             minimize_window,
             close_window,
+            set_ignore_cursor_events,
+            set_resizable,
+            open_url,
+            get_autostart,
+            set_autostart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -180,6 +180,10 @@ ipcMain.handle('close-window', () => {
   if (mainWindow) mainWindow.close()
 })
 
+ipcMain.handle('set-ignore-cursor-events', (_event, ignore: boolean) => {
+  if (mainWindow) mainWindow.setIgnoreMouseEvents(ignore, { forward: true })
+})
+
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {

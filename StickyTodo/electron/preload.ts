@@ -9,4 +9,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('set-always-on-top', flag),
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke('minimize-window'),
   closeWindow: (): Promise<void> => ipcRenderer.invoke('close-window'),
+  setIgnoreCursorEvents: (ignore: boolean): Promise<void> =>
+    ipcRenderer.invoke('set-ignore-cursor-events', ignore),
 })
