@@ -6,7 +6,14 @@ A lightweight, always-on-top desktop sticky note for your TODOs.
 
 ## Download / 下载
 
-- [📦 StickyTodo_V1.0_x64-setup.exe](https://github.com/lanson-dev/StickyTodo/releases/latest/download/StickyTodo_0.1.0_x64-setup.exe)
+Go to [Releases](https://github.com/lanson-dev/StickyTodo/releases) to download / 前往 Releases 页面下载：
+
+| Platform | File |
+|---|---|
+| Windows x64 | `StickyTodo_0.1.0_x64-setup.exe` |
+| macOS Apple Silicon | `StickyTodo_0.1.0_aarch64.dmg` |
+| macOS Intel | `StickyTodo_0.1.0_x64.dmg` |
+| Linux x64 | `StickyTodo_0.1.0_amd64.deb` / `.AppImage` |
 
 ## How to Use / 使用说明
 
