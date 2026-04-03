@@ -2,11 +2,14 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { invoke } from '@tauri-apps/api/core'
 
+export type ItemStatus = 'todo' | 'doing' | 'review'
+
 export interface TodoItem {
   id: string
   text: string
   done: boolean
   bold: boolean
+  status: ItemStatus
   createdAt: number
   completedAt?: number
 }
@@ -48,7 +51,12 @@ export const useTodoStore = defineStore('todo', () => {
   const selectedId = ref<string | null>(null)
   const dragSourceId = ref<string | null>(null)
 
-  const todoItems = computed(() => items.value.filter((i) => !i.done))
+  const todoItems = computed(() => {
+    const todos = items.value.filter((i) => !i.done)
+    // Sort: doing first, then todo, then review
+    const order: Record<ItemStatus, number> = { doing: 0, todo: 1, review: 2 }
+    return [...todos].sort((a, b) => order[a.status] - order[b.status])
+  })
   const doneItems = computed(() =>
     items.value
       .filter((i) => i.done)
@@ -67,11 +75,12 @@ export const useTodoStore = defineStore('todo', () => {
     try {
       const todosJson = await invoke<string>('load_todos')
       const parsed = JSON.parse(todosJson) as Partial<TodoItem>[]
-      items.value = parsed.map((i) => ({
+      items.value = parsed.map((i: any) => ({
         id: i.id ?? genId(),
         text: i.text ?? '',
         done: i.done ?? false,
         bold: i.bold ?? false,
+        status: (['todo','doing','review'].includes(i.status) ? i.status : 'todo') as ItemStatus,
         createdAt: i.createdAt ?? Date.now(),
         completedAt: i.completedAt,
       }))
@@ -130,6 +139,7 @@ export const useTodoStore = defineStore('todo', () => {
       text: trimmed,
       done: false,
       bold: false,
+      status: 'todo',
       createdAt: Date.now(),
     }
     items.value.splice(lastTodoIdx + 1, 0, newItem)
@@ -173,6 +183,7 @@ export const useTodoStore = defineStore('todo', () => {
       text: trimmed,
       done: false,
       bold: false,
+      status: 'todo',
       createdAt: Date.now(),
     }
     items.value.splice(idx + 1, 0, newItem)
@@ -247,6 +258,17 @@ export const useTodoStore = defineStore('todo', () => {
     persistConfig()
   }
 
+  function setItemStatus(id: string, status: ItemStatus) {
+    const item = items.value.find((i) => i.id === id)
+    if (item) {
+      item.status = status
+      // doing items are always bold, review items never bold
+      if (status === 'doing') item.bold = true
+      else item.bold = false
+      persistTodos()
+    }
+  }
+
   function setTheme(theme: 'dark' | 'light') {
     config.value.theme = theme
     persistConfig()
@@ -272,6 +294,7 @@ export const useTodoStore = defineStore('todo', () => {
     toggleBold,
     reorderItem,
     updateItemText,
+    setItemStatus,
     setAlwaysOnTop,
     setLocked,
     setTheme,

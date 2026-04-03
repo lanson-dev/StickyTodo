@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
-import type { TodoItem } from '@/stores/todo'
+import type { TodoItem, ItemStatus } from '@/stores/todo'
 import { useTodoStore } from '@/stores/todo'
 
 const props = defineProps<{ item: TodoItem; index?: number }>()
@@ -23,6 +23,26 @@ const createdLabel = computed(() => fmtDay(props.item.createdAt))
 const completedLabel = computed(() =>
   props.item.completedAt ? fmtDay(props.item.completedAt) : '',
 )
+const tooltipDate = computed(() => {
+  if (props.item.done && props.item.completedAt) {
+    return `${createdLabel.value} → ${completedLabel.value}`
+  }
+  return createdLabel.value
+})
+
+// ── Status ──────────────────────────────────────────────
+const STATUSES: ItemStatus[] = ['todo', 'doing', 'review']
+
+function cycleStatus() {
+  const cur = STATUSES.indexOf(props.item.status)
+  const next = STATUSES[(cur + 1) % STATUSES.length]!
+  store.setItemStatus(props.item.id, next)
+}
+
+function setStatus(s: ItemStatus) {
+  store.setItemStatus(props.item.id, s)
+  closeCtx()
+}
 
 // ── Edit ────────────────────────────────────────────────
 const isEditing = ref(false)
@@ -139,6 +159,8 @@ onBeforeUnmount(() => {
       class="item"
       :class="{
         done: item.done,
+        'status-doing': !item.done && item.status === 'doing',
+        'status-review': !item.done && item.status === 'review',
         dragging: store.dragSourceId === item.id,
       }"
       @dblclick.stop="startEdit"
@@ -158,17 +180,10 @@ onBeforeUnmount(() => {
         @blur="commitEdit"
         @click.stop
       />
-      <span v-else class="text" :class="{ bold: item.bold }">{{ item.text }}</span>
+      <span v-else class="text" :class="{ bold: item.status === 'doing' }">{{ item.text }}</span>
 
-      <!-- TODO items: hover shows created date -->
-      <span v-if="!item.done && !store.config.locked" class="hover-date">{{ createdLabel }}</span>
-
-      <!-- Done items: timestamps -->
-      <span v-if="item.done" class="timestamps">
-        <span class="ts-label">{{ createdLabel }}</span>
-        <span class="ts-sep">→</span>
-        <span class="ts-label">{{ completedLabel }}</span>
-      </span>
+      <!-- Hover tooltip: floats above the item -->
+      <span v-if="!store.config.locked" class="hover-tip">{{ tooltipDate }}</span>
 
       <!-- TODO: hover shows check button -->
       <button
@@ -230,6 +245,16 @@ onBeforeUnmount(() => {
         :style="{ left: ctxX + 'px', top: ctxY + 'px' }"
         @mousedown.stop
       >
+        <!-- Status switcher -->
+        <div class="ctx-status">
+          <button
+            v-for="s in STATUSES" :key="s"
+            class="ctx-status-btn"
+            :class="{ active: item.status === s }"
+            @click.stop="setStatus(s)"
+          >{{ s === 'todo' ? 'Todo' : s === 'doing' ? 'Doing' : 'Review' }}</button>
+        </div>
+        <div class="ctx-sep" />
         <button class="ctx-item" @click="ctxInsert">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
           Insert below
@@ -263,8 +288,29 @@ onBeforeUnmount(() => {
 .item:hover { background: var(--hover); }
 .item:hover .action-btn { opacity: 0.55; }
 .item:hover .del { opacity: 0.45; }
-.item:hover .hover-date { opacity: 1; }
+.item:hover .hover-tip { opacity: 1; transform: translateY(0); pointer-events: none; }
 .item.dragging { opacity: 0.35; }
+
+/* Floating date tooltip above item */
+.hover-tip {
+  position: absolute;
+  right: 8px; top: -6px;
+  transform: translateY(4px);
+  font-size: 10px; line-height: 1;
+  color: var(--fg); background: var(--surface);
+  padding: 3px 7px; border-radius: 4px;
+  white-space: nowrap; opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+  user-select: none; pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 2;
+}
+
+/* Status styles */
+.item.status-doing { }
+.item.status-review .text { opacity: 0.45; }
+.item.status-review .num { opacity: 0.45; }
+
 
 .num {
   font-size: 12px; color: var(--text-3);
@@ -277,22 +323,14 @@ onBeforeUnmount(() => {
   text-shadow: var(--text-shadow);
 }
 .text.bold { font-weight: 700; }
-.item.done .text { text-decoration: line-through; color: var(--text-2); }
+/* Done items: no strikethrough, just dimmed color */
+.item.done .text { color: var(--text-2); }
 .edit-input {
   flex: 1; min-width: 0; height: 28px; padding: 0 8px;
   border: 1.5px solid var(--sep); border-radius: 6px;
   background: var(--surface); color: var(--text);
   font-size: 14px; font-family: inherit; outline: none;
 }
-.timestamps {
-  display: flex; align-items: center; gap: 3px;
-  flex-shrink: 0; font-size: 10px; color: var(--text-3); white-space: nowrap;
-}
-.hover-date {
-  flex-shrink: 0; font-size: 10px; color: var(--text-3);
-  white-space: nowrap; opacity: 0; transition: opacity 0.15s; user-select: none;
-}
-.ts-sep { opacity: 0.5; }
 .action-btn {
   display: flex; align-items: center; justify-content: center;
   width: 26px; height: 26px; border: none; background: transparent;
@@ -319,11 +357,13 @@ onBeforeUnmount(() => {
   background: var(--surface); color: var(--text);
   font-size: 13px; font-family: inherit; outline: none;
 }
+
+/* Context menu */
 .ctx-menu {
   position: fixed; z-index: 9999;
   backdrop-filter: blur(20px) saturate(180%);
   border-radius: 8px;
-  padding: 4px; min-width: 150px; box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  padding: 4px; min-width: 160px; box-shadow: 0 6px 20px rgba(0,0,0,0.18);
 }
 .ctx-menu.theme-dark {
   background: rgba(50,50,54,0.92);
@@ -333,6 +373,41 @@ onBeforeUnmount(() => {
   background: rgba(255,255,255,0.92);
   border: 1px solid rgba(0,0,0,0.06);
 }
+.ctx-sep {
+  height: 1px; margin: 3px 6px;
+}
+.ctx-menu.theme-dark .ctx-sep { background: rgba(255,255,255,0.08); }
+.ctx-menu.theme-light .ctx-sep { background: rgba(0,0,0,0.06); }
+
+/* Status switcher in context menu */
+.ctx-status {
+  display: flex; gap: 2px; padding: 4px 4px 2px;
+  background: transparent; border-radius: 6px;
+}
+.ctx-status-btn {
+  flex: 1; padding: 4px 0; border: none; border-radius: 5px;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.ctx-menu.theme-dark .ctx-status-btn {
+  background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.45);
+}
+.ctx-menu.theme-light .ctx-status-btn {
+  background: rgba(0,0,0,0.03); color: rgba(0,0,0,0.4);
+}
+.ctx-menu.theme-dark .ctx-status-btn.active {
+  background: var(--accent, #0a84ff); color: #fff;
+}
+.ctx-menu.theme-light .ctx-status-btn.active {
+  background: var(--accent, #007aff); color: #fff;
+}
+.ctx-menu.theme-dark .ctx-status-btn:hover:not(.active) {
+  background: rgba(255,255,255,0.08);
+}
+.ctx-menu.theme-light .ctx-status-btn:hover:not(.active) {
+  background: rgba(0,0,0,0.06);
+}
+
 .ctx-item {
   display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px;
   border: none; background: transparent;

@@ -8,12 +8,12 @@ A lightweight, always-on-top desktop sticky note for your TODOs.
 
 Go to [Releases](https://github.com/lanson-dev/StickyTodo/releases) to download / 前往 Releases 页面下载：
 
-| Platform | File |
-|---|---|
-| Windows x64 | `StickyTodo_1.3.0_x64-setup.exe` |
-| macOS Apple Silicon | `StickyTodo_1.3.0_aarch64.dmg` |
-| macOS Intel | `StickyTodo_1.3.0_x64.dmg` |
-| Linux x64 | `StickyTodo_1.3.0_amd64.deb` / `.AppImage` |
+| Platform            | File                                           |
+| ------------------- | ---------------------------------------------- |
+| Windows x64         | `StickyTodo_1.4.0_x64-setup.exe`             |
+| macOS Apple Silicon | `StickyTodo_1.4.0_aarch64.dmg`               |
+| macOS Intel         | `StickyTodo_1.4.0_x64.dmg`                   |
+| Linux x64           | `StickyTodo_1.4.0_amd64.deb` / `.AppImage` |
 
 ## How to Use / 使用说明
 
@@ -65,6 +65,24 @@ Output / 产物位于 `src-tauri/target/release/`
 | --------------- | ---------------- |
 | `todos.json`  | Tasks / 任务数据 |
 | `config.json` | Settings / 配置  |
+
+## Changelog / 更新日志
+
+### v1.4.0
+
+- ✨ Task status: Todo / Doing / Review — right-click to switch / 任务状态三态切换（右键菜单）
+- ✨ Hover tooltip for dates (no longer inline) / 日期改为悬浮气泡提示
+- 🐛 Fix: window not showing on boot autostart / 修复开机自启窗口不显示
+
+<img src=./photos/V1.4Feature.png width=400 />
+
+### v1.3.0
+
+- 📌 System tray with Lock / Stick / Quit menu / 系统托盘右键菜单
+- 🎨 Adjustable BG / BG Lock / Text opacity / 背景与字体不透明度可调
+- 🔄 Pointer-based drag reorder / 拖拽排序
+- ⌨️ `Ctrl+Shift+Alt+L` global shortcut / 全局快捷键
+- 🚀 Auto-start on boot / 开机自启
 
 ## Links / 链接
 
